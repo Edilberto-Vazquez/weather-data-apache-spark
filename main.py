@@ -1,4 +1,6 @@
-import sys
+import os
+import argparse
+
 
 from pyspark.sql import SparkSession
 from pyspark.sql.types import (
@@ -10,7 +12,9 @@ from pyspark.sql.types import (
     IntegerType,
 )
 from pyspark.sql.functions import regexp_replace, lit
-import argparse
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 def weather_data_cli():
@@ -103,13 +107,20 @@ def load_weather_data():
     # display the first ten columns of the transformed data
     weather_data_df.show(n=10)
 
+    # get env vars
+    DB_NAME = os.getenv("DB_NAME")
+    DB_USER = os.getenv("DB_USER")
+    DB_PASS = os.getenv("DB_PASS")
+    DB_HOST = os.getenv("DB_HOST")
+    DB_PORT = os.getenv("DB_PORT")
+
     # charge data to the DB
-    URL = "jdbc:postgresql://localhost:5432/weather-app"
+    URL = f"jdbc:postgresql://{DB_HOST}:{DB_PORT}/{DB_NAME}"
     TABLE = "analysis_weatherrecord"
     MODE = "append"
     PROPERTIES = {
-        "user": "admin",
-        "password": "1234",
+        "user": DB_USER,
+        "password": DB_PASS,
         "driver": "org.postgresql.Driver",
     }
     weather_data_df.write.jdbc(url=URL, table=TABLE, mode=MODE, properties=PROPERTIES)
