@@ -11,10 +11,9 @@ from pyspark.sql.types import (
     DoubleType,
     IntegerType,
 )
-from pyspark.sql.functions import regexp_replace, lit
+from pyspark.sql.functions import regexp_replace, lit, min, max
+import psycopg2
 from dotenv import load_dotenv
-
-load_dotenv()
 
 
 def weather_data_cli():
@@ -125,10 +124,36 @@ def load_weather_data():
     }
     weather_data_df.write.jdbc(url=URL, table=TABLE, mode=MODE, properties=PROPERTIES)
 
+    dates = (
+        weather_data_df.select(min("record_date"), max("record_date"))
+        .collect()[0]
+        .asDict()
+    )
+
+    max_date = dates["max(record_date)"].isoformat()
+
     spark_ctx.stop()
+
+    sql_conn = psycopg2.connect(
+        database=DB_NAME,
+        user=DB_USER,
+        password=DB_PASS,
+        host=DB_HOST,
+        port=DB_PORT,
+    )
+
+    sql_cursor = sql_conn.cursor()
+    sql_query = f"UPDATE analysis_weatherstation SET last_upload_date = '{max_date}' WHERE id = '{stations[args.station]}';"
+    # print(sql_query)
+    sql_cursor.execute(sql_query)
+    # sql_cursor.execute("select * from analysis_weatherstation;")
+    # print(sql_cursor.fetchall())
+    sql_conn.commit()
+    sql_conn.close()
 
 
 def main():
+    load_dotenv()
     load_weather_data()
 
 
